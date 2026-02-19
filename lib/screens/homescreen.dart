@@ -296,29 +296,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // 🆕 NUEVO MÉTODO: Continuar un test existente
+  // 🆕 NUEVO MÉTODO: Continuar un test existente - SOLO ESTO CAMBIÓ
   void _continueTest(Map<String, dynamic> testProgress) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => QuizScreen(
           userData: widget.userData,
-          initialProgress: testProgress, // Necesitarás modificar QuizScreen para aceptar esto
+          initialProgress: testProgress, // 👈 Esto pasa el progreso guardado
+          startNew: false, // 👈 Importante: indicar que no es nuevo
         ),
       ),
     );
   }
 
-  // 🆕 NUEVO MÉTODO: Iniciar test nuevo
+  // 🆕 NUEVO MÉTODO: Iniciar test nuevo - SOLO ESTO CAMBIÓ
   void _startNewTest() {
-    // Primero eliminar cualquier progreso anterior si existe (opcional)
-    // y luego iniciar nuevo test
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => QuizScreen(
           userData: widget.userData,
-          startNew: true, // Indicador para empezar nuevo
+          startNew: true, // 👈 Importante: indicar que es nuevo
         ),
       ),
     );
@@ -1048,12 +1047,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       textColor: textSecondary,
       onConfirmBtnTap: () {
         Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => QuizScreen(userData: widget.userData),
-          ),
-        );
+        _startNewTest(); // 👈 Ahora usa el método correcto
       },
     );
   }

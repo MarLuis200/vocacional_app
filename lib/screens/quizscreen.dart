@@ -6,14 +6,14 @@ import 'package:vocacional_app/database/db_helper.dart';
 
 class QuizScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
-  final Map<String, dynamic>? initialProgress; // 👈 NUEVO: para continuar test
-  final bool startNew; // 👈 NUEVO: para empezar nuevo
+  final Map<String, dynamic>? initialProgress;
+  final bool startNew;
 
   const QuizScreen({
     super.key,
     required this.userData,
-    this.initialProgress, // 👈 Opcional
-    this.startNew = false, // 👈 Opcional, por defecto false
+    this.initialProgress,
+    this.startNew = false,
   });
 
   @override
@@ -338,14 +338,13 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     super.initState();
     _initializeControllers();
 
-    // 👇 NUEVA LÓGICA: Si hay initialProgress, cargar ese progreso
     if (widget.initialProgress != null) {
+      print('📥 Cargando desde initialProgress: ${widget.initialProgress!['currentQuestionIndex']}');
       _loadFromProgress(widget.initialProgress!);
     } else if (!widget.startNew) {
-      // Solo cargar progreso guardado si no es nuevo test
       loadProgress();
     } else {
-      // Es un test nuevo, no cargar nada
+      print('🆕 Iniciando test nuevo');
       setState(() {
         _isLoading = false;
       });
@@ -386,20 +385,21 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     _currentCategory = getCurrentCategory();
   }
 
-  // 👇 NUEVO MÉTODO: Cargar progreso desde el parámetro initialProgress
   void _loadFromProgress(Map<String, dynamic> progress) {
     setState(() {
       currentQuestionIndex = progress['currentQuestionIndex'] ?? 0;
 
-      // Cargar scores
       if (progress['scores'] != null) {
         scores = Map<String, int>.from(progress['scores']);
       }
 
-      // Cargar historial de respuestas si existe
       if (progress['answersHistory'] != null) {
         answersHistory = (progress['answersHistory'] as List)
-            .map((e) => e == 'true' ? true : (e == 'false' ? false : null))
+            .map((e) {
+              if (e == 'true') return true;
+              if (e == 'false') return false;
+              return null;
+            })
             .toList();
       }
 
@@ -407,11 +407,10 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       _isLoading = false;
     });
 
-    // Animar
+    print('✅ Progreso cargado desde initialProgress: Pregunta $currentQuestionIndex de 42');
     _slideController.forward();
   }
 
-  // Método para guardar el progreso
   Future<void> saveProgress({bool showMessage = true}) async {
     final dbHelper = DBHelper();
 
@@ -462,9 +461,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Método para cargar el progreso guardado
   Future<void> loadProgress() async {
-    // Si es un test nuevo, no cargar progreso
     if (widget.startNew) {
       setState(() {
         _isLoading = false;
@@ -483,6 +480,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       if (progress != null && progress.isNotEmpty) {
         setState(() {
           currentQuestionIndex = progress['currentQuestionIndex'] ?? 0;
+
           scores = Map<String, int>.from(progress['scores'] ?? {
             'Realista (R)': 0,
             'Investigador (I)': 0,
@@ -492,24 +490,29 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             'Convencional (C)': 0,
           });
 
-          // Cargar historial de respuestas
           if (progress['answersHistory'] != null) {
             answersHistory = (progress['answersHistory'] as List)
-                .map((e) => e == 'true' ? true : (e == 'false' ? false : null))
+                .map((e) {
+                  if (e == 'true') return true;
+                  if (e == 'false') return false;
+                  return null;
+                })
                 .toList();
           }
 
           _currentCategory = getCurrentCategory();
 
-          // Si ya completó el test, mostrar resultados
           if (currentQuestionIndex >= 42) {
             testCompleted = true;
           }
         });
-        print('Progreso cargado: Pregunta $currentQuestionIndex');
+
+        print('✅ Progreso cargado desde BD: Pregunta $currentQuestionIndex');
+      } else {
+        print('📭 No hay progreso guardado');
       }
     } catch (e) {
-      print('Error al cargar progreso: $e');
+      print('❌ Error al cargar progreso: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -517,7 +520,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     }
   }
 
-  // Método para limpiar el progreso (cuando se complete el test)
   Future<void> clearProgress() async {
     final dbHelper = DBHelper();
 
@@ -529,7 +531,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     }
   }
 
-  // Método para reiniciar el test
   Future<void> restartTest() async {
     setState(() {
       currentQuestionIndex = 0;
@@ -558,15 +559,12 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     );
   }
 
-  // NUEVO: Método para retroceder a la pregunta anterior
   void goToPreviousQuestion() {
     if (currentQuestionIndex > 0) {
-      // Obtener la respuesta anterior
       bool? previousAnswer = answersHistory.length > currentQuestionIndex - 1
           ? answersHistory[currentQuestionIndex - 1]
           : null;
 
-      // Si había una respuesta, restar del score
       if (previousAnswer != null) {
         final previousCategory = questionCategories[currentQuestionIndex - 1] ?? 'Realista (R)';
         if (previousAnswer) {
@@ -577,18 +575,15 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       setState(() {
         currentQuestionIndex--;
         _currentCategory = getCurrentCategory();
-        // Remover la respuesta actual del historial si existe
         if (answersHistory.length > currentQuestionIndex) {
           answersHistory = answersHistory.sublist(0, currentQuestionIndex);
         }
         _showFeedback = false;
       });
 
-      // Animar el cambio
       _slideController.reset();
       _slideController.forward();
 
-      // Guardar progreso después de retroceder
       if (_autoSaveEnabled) {
         saveProgress(showMessage: false);
       }
@@ -618,7 +613,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         scores[category] = scores[category]! + 1;
       }
 
-      // Guardar respuesta en el historial
       if (answersHistory.length <= currentQuestionIndex) {
         answersHistory.add(answer);
       } else {
@@ -636,17 +630,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           currentQuestionIndex++;
           _currentCategory = getCurrentCategory();
 
-          // Animar la transición
           _slideController.reset();
           _slideController.forward();
 
-          // Guardado automático después de cada respuesta
           if (_autoSaveEnabled) {
             saveProgress(showMessage: false);
           }
         } else {
           testCompleted = true;
-          // Limpiar progreso cuando se complete el test
           clearProgress();
         }
       });
@@ -742,7 +733,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header del diálogo moderno
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -785,14 +775,12 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 ),
               ),
 
-              // Contenido con scroll
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Perfil dominante con glassmorphism
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -852,7 +840,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 24),
 
-                      // Gráfico de barras moderno
                       const Text(
                         'Puntajes por Categoría',
                         style: TextStyle(
@@ -865,7 +852,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       _buildBarChart(results['scores']),
                       const SizedBox(height: 16),
 
-                      // Leyenda moderna
                       const Text(
                         'Leyenda:',
                         style: TextStyle(
@@ -889,7 +875,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 24),
 
-                      // Carreras sugeridas - con diseño moderno
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -945,7 +930,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 16),
 
-                      // MOSTRAR TODAS LAS CARRERAS con diseño moderno
                       ...(results['careers'] as List).map((career) =>
                         _buildModernCareerCard(career)
                       ).toList(),
@@ -954,7 +938,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 ),
               ),
 
-              // Botones de acción modernos
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -1021,7 +1004,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Widget moderno para tarjetas de carrera
   Widget _buildModernCareerCard(Map<String, dynamic> career) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1187,7 +1169,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Función auxiliar para abreviaturas de categorías
   String _getCategoryAbbreviation(String category) {
     switch (category) {
       case 'Realista (R)': return 'R';
@@ -1593,7 +1574,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
             const SizedBox(height: 20),
 
-            // Tarjeta de pregunta con glassmorphism (SIN CATEGORÍA)
+            // Tarjeta de pregunta
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1629,7 +1610,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 40),
 
-                    // Botones de respuesta modernos
                     Row(
                       children: [
                         Expanded(
@@ -1697,7 +1677,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
                     const SizedBox(height: 20),
 
-                    // Botón de regresar a pregunta anterior (debajo de Sí/No)
                     if (currentQuestionIndex > 0)
                       Container(
                         width: double.infinity,
@@ -1722,55 +1701,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            // Indicador de respuestas guardadas
-            if (answersHistory.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.history, color: primaryColor, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Respuestas guardadas: ${answersHistory.length} de 42',
-                        style: TextStyle(
-                          color: textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '${answersHistory.length}',
-                        style: TextStyle(
-                          color: primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
       ),
