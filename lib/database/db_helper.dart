@@ -207,41 +207,41 @@ class DBHelper {
 
   // Métodos para manejar el progreso del test
 
-Future<void> saveTestProgress(Map<String, dynamic> progressData) async {
-  final db = await database;
+  Future<void> saveTestProgress(Map<String, dynamic> progressData) async {
+    final db = await database;
 
-  final scoresJson = jsonEncode(progressData['scores']);
-  final existingProgress = await db.query(
-    'test_progress',
-    where: 'userId = ? AND testType = ?',
-    whereArgs: [progressData['userId'], progressData['testType']],
-  );
-
-  if (existingProgress.isNotEmpty) {
-    // Actualizar el registro existente
-    await db.update(
+    final scoresJson = jsonEncode(progressData['scores']);
+    final existingProgress = await db.query(
       'test_progress',
-      {
-        'currentQuestionIndex': progressData['currentQuestionIndex'],
-        'scores': scoresJson,
-        'lastUpdate': progressData['lastUpdate'],
-      },
       where: 'userId = ? AND testType = ?',
       whereArgs: [progressData['userId'], progressData['testType']],
     );
-  } else {
-    await db.insert(
-      'test_progress',
-      {
-        'userId': progressData['userId'],
-        'testType': progressData['testType'],
-        'currentQuestionIndex': progressData['currentQuestionIndex'],
-        'scores': scoresJson,
-        'lastUpdate': progressData['lastUpdate'],
-      },
-    );
+
+    if (existingProgress.isNotEmpty) {
+      // Actualizar el registro existente
+      await db.update(
+        'test_progress',
+        {
+          'currentQuestionIndex': progressData['currentQuestionIndex'],
+          'scores': scoresJson,
+          'lastUpdate': progressData['lastUpdate'],
+        },
+        where: 'userId = ? AND testType = ?',
+        whereArgs: [progressData['userId'], progressData['testType']],
+      );
+    } else {
+      await db.insert(
+        'test_progress',
+        {
+          'userId': progressData['userId'],
+          'testType': progressData['testType'],
+          'currentQuestionIndex': progressData['currentQuestionIndex'],
+          'scores': scoresJson,
+          'lastUpdate': progressData['lastUpdate'],
+        },
+      );
+    }
   }
-}
 
   Future<Map<String, dynamic>?> getTestProgress(int userId, String testType) async {
     final db = await database;
@@ -291,5 +291,38 @@ Future<void> saveTestProgress(Map<String, dynamic> progressData) async {
       where: 'userId = ? AND testType = ?',
       whereArgs: [userId, testType],
     );
+  }
+
+  // 🆕 NUEVO MÉTODO AGREGADO - Obtener todos los tests en progreso de un usuario
+  Future<List<Map<String, dynamic>>> getAllTestsInProgress(int userId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'test_progress',
+      where: 'userId = ?',
+      whereArgs: [userId],
+      orderBy: 'lastUpdate DESC',
+    );
+
+    // Procesar cada progreso para convertir los scores de JSON a Map
+    return maps.map((progress) {
+      final processedProgress = Map<String, dynamic>.from(progress);
+
+      if (processedProgress['scores'] != null) {
+        try {
+          processedProgress['scores'] = jsonDecode(processedProgress['scores']);
+        } catch (e) {
+          processedProgress['scores'] = {
+            'Realista (R)': 0,
+            'Investigador (I)': 0,
+            'Artístico (A)': 0,
+            'Social (S)': 0,
+            'Emprendedor (E)': 0,
+            'Convencional (C)': 0,
+          };
+        }
+      }
+
+      return processedProgress;
+    }).toList();
   }
 }

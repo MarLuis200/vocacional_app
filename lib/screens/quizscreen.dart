@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
 import 'package:flutter/animation.dart';
 import 'homescreen.dart';
 import 'dart:math';
@@ -7,21 +6,28 @@ import 'package:vocacional_app/database/db_helper.dart';
 
 class QuizScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
+  final Map<String, dynamic>? initialProgress; // 👈 NUEVO: para continuar test
+  final bool startNew; // 👈 NUEVO: para empezar nuevo
 
-  const QuizScreen({super.key, required this.userData});
+  const QuizScreen({
+    super.key,
+    required this.userData,
+    this.initialProgress, // 👈 Opcional
+    this.startNew = false, // 👈 Opcional, por defecto false
+  });
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
 }
 
 class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
-  late ConfettiController _confettiController;
-  late ConfettiController _confettiControllerLeft;
-  late ConfettiController _confettiControllerRight;
-  late AnimationController _scaleController;
-  late AnimationController _shakeController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _shakeAnimation;
+  // Animaciones modernas
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late AnimationController _pulseController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _pulseAnimation;
 
   // Lista de preguntas en el orden específico
   final List<String> riasecQuestions = [
@@ -112,48 +118,48 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   ];
 
   final Map<int, String> questionCategories = {
-    0: 'Realista (R)',   // Pregunta 1
-    1: 'Investigador (I)', // Pregunta 2
-    2: 'Artístico (A)',   // Pregunta 3
-    3: 'Social (S)',      // Pregunta 4
-    4: 'Emprendedor (E)', // Pregunta 5
-    5: 'Convencional (C)', // Pregunta 6
-    6: 'Realista (R)',    // Pregunta 7
-    7: 'Artístico (A)',   // Pregunta 8
-    8: 'Convencional (C)', // Pregunta 9
-    9: 'Emprendedor (E)', // Pregunta 10
-    10: 'Investigador (I)', // Pregunta 11
-    11: 'Social (S)',     // Pregunta 12
-    12: 'Social (S)',     // Pregunta 13
-    13: 'Realista (R)',   // Pregunta 14
-    14: 'Convencional (C)', // Pregunta 15
-    15: 'Emprendedor (E)', // Pregunta 16
-    16: 'Artístico (A)',  // Pregunta 17
-    17: 'Investigador (I)', // Pregunta 18
-    18: 'Emprendedor (E)', // Pregunta 19
-    19: 'Social (S)',     // Pregunta 20
-    20: 'Investigador (I)', // Pregunta 21
-    21: 'Realista (R)',   // Pregunta 22
-    22: 'Artístico (A)',  // Pregunta 23
-    23: 'Convencional (C)', // Pregunta 24
-    24: 'Convencional (C)', // Pregunta 25
-    25: 'Investigador (I)', // Pregunta 26
-    26: 'Artístico (A)',  // Pregunta 27
-    27: 'Social (S)',     // Pregunta 28
-    28: 'Emprendedor (E)', // Pregunta 29
-    29: 'Realista (R)',   // Pregunta 30
-    30: 'Artístico (A)',  // Pregunta 31
-    31: 'Realista (R)',   // Pregunta 32
-    32: 'Investigador (I)', // Pregunta 33
-    33: 'Social (S)',     // Pregunta 34
-    34: 'Convencional (C)', // Pregunta 35
-    35: 'Emprendedor (E)', // Pregunta 36
-    36: 'Realista (R)',   // Pregunta 37
-    37: 'Convencional (C)', // Pregunta 38
-    38: 'Investigador (I)', // Pregunta 39
-    39: 'Social (S)',     // Pregunta 40
-    40: 'Artístico (A)',  // Pregunta 41
-    41: 'Emprendedor (E)', // Pregunta 42
+    0: 'Realista (R)',
+    1: 'Investigador (I)',
+    2: 'Artístico (A)',
+    3: 'Social (S)',
+    4: 'Emprendedor (E)',
+    5: 'Convencional (C)',
+    6: 'Realista (R)',
+    7: 'Artístico (A)',
+    8: 'Convencional (C)',
+    9: 'Emprendedor (E)',
+    10: 'Investigador (I)',
+    11: 'Social (S)',
+    12: 'Social (S)',
+    13: 'Realista (R)',
+    14: 'Convencional (C)',
+    15: 'Emprendedor (E)',
+    16: 'Artístico (A)',
+    17: 'Investigador (I)',
+    18: 'Emprendedor (E)',
+    19: 'Social (S)',
+    20: 'Investigador (I)',
+    21: 'Realista (R)',
+    22: 'Artístico (A)',
+    23: 'Convencional (C)',
+    24: 'Convencional (C)',
+    25: 'Investigador (I)',
+    26: 'Artístico (A)',
+    27: 'Social (S)',
+    28: 'Emprendedor (E)',
+    29: 'Realista (R)',
+    30: 'Artístico (A)',
+    31: 'Realista (R)',
+    32: 'Investigador (I)',
+    33: 'Social (S)',
+    34: 'Convencional (C)',
+    35: 'Emprendedor (E)',
+    36: 'Realista (R)',
+    37: 'Convencional (C)',
+    38: 'Investigador (I)',
+    39: 'Social (S)',
+    40: 'Artístico (A)',
+    41: 'Emprendedor (E)',
   };
 
   final Map<String, List<String>> careerSuggestions = {
@@ -245,7 +251,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     'Ciencias de la Salud': 'Campo diverso aplicando conocimientos científicos al cuidado humano. Combinando investigación con práctica clínica para mejorar la calidad de vida de las personas.',
     'Tecnología Industrial': 'Especialización en optimización de procesos productivos y manejo de tecnología avanzada. Ideal para mentes prácticas orientadas a la eficiencia y mejora continua.',
     'Innovación Alimentaria': 'Carrera fusionando tecnología agrícola con ciencia de alimentos. Enfocada en desarrollar productos alimenticios sostenibles y nutritivos para el futuro.',
-
     'Psicología y Asesoramiento': 'Profesión dedicada a comprender y mejorar la salud mental mediante apoyo terapéutico. Ideal para personas empáticas que disfrutan ayudar a otros en su crecimiento personal.',
     'Enfermería Profesional': 'Carrera de servicio centrada en el cuidado integral del paciente. Combinando conocimientos médicos con compasión humana en entornos de salud diversos.',
     'Fisioterapia y Rehabilitación': 'Especialización en recuperación física y mejora de la movilidad. Perfecta para quienes disfrutan ver el progreso tangible en la calidad de vida de las personas.',
@@ -255,9 +260,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     'Pedagogía y Educación': 'Vocación dedicada a la formación de nuevas generaciones. Enfocada en desarrollar métodos de enseñanza que inspiren el amor por el aprendizaje.',
     'Servicios Humanos': 'Campo diverso dedicado al bienestar comunitario mediante programas de apoyo social. Ideal para quienes buscan impacto social directo.',
     'Educación Especial': 'Especialización en enseñanza adaptada a necesidades educativas particulares. Requiere paciencia, creatividad y compromiso con la inclusión.',
-    'Derecho y Gobierno': 'Carrera de servicio público enfocada en justicia y administración estatal. Perfecta para quienes disfrutan el debate y la construcción de sociedad.',
+    'Derecho y Gobierno': 'Carrera de servicio pública enfocada en justicia y administración estatal. Perfecta para quienes disfrutan el debate y la construcción de sociedad.',
     'Hotelería y Turismo': 'Profesión de servicio especializada en experiencias hoteleras de calidad. Combinando gestión operativa con atención al cliente excepcional.',
-
     'Biología Marina': 'Ciencia dedicada al estudio de ecosistemas acuáticos y conservación marina. Ideal para mentes curiosas fascinadas por la vida oceánica y su preservación.',
     'Ingenierías Especializadas': 'Campos técnicos avanzados requiriendo profunda investigación y desarrollo. Perfectos para solucionadores de problemas complejos mediante ciencia aplicada.',
     'Química y Bioquímica': 'Ciencia fundamental estudiando la composición de la materia y reacciones biológicas. Base para innovación en medicina, materiales y tecnología.',
@@ -269,7 +273,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     'Investigación en Salud': 'Carrera científica dedicada al avance médico mediante estudios clínicos y experimentación. Motor de innovación en tratamientos y prevención.',
     'Ingeniería Tecnológica': 'Investigación aplicada al desarrollo de nuevas tecnologías y sistemas avanzados. Fusionando principios científicos con innovación práctica.',
     'Ciencias Políticas': 'Estudio sistemático de sistemas de gobierno, poder político y relaciones internacionales. Base para políticas públicas informadas y democracia.',
-
     'Merchandising de Moda': 'Carrera emprendedora fusionando creatividad con estrategia comercial en retail. Ideal para trendsetters con visión de negocio en industria fashion.',
     'Bienes Raíces': 'Profesión de negocios especializada en transacciones inmobiliarias y desarrollo de propiedades. Perfecta para negociadores con visión de inversión.',
     'Marketing y Ventas': 'Campo dinámico enfocado en estrategias comerciales y generación de ingresos. Para líderes persuasivos con mentalidad de crecimiento empresarial.',
@@ -280,7 +283,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     'Medios Creativos': 'Industria emprendedora fusionando arte con modelos de negocio innovadores. Para creadores con mentalidad empresarial y comercial.',
     'Administración Empresarial': 'Liderazgo organizacional enfocado en crecimiento estratégico y eficiencia operativa. Formando directivos con visión global de negocios.',
     'Derecho Público': 'Carrera de influencia en legislación, políticas públicas y defensa legal. Para líderes que buscan impacto social mediante marco legal.',
-
     'Ciencias de la Comunicación': 'Arte de transmitir mensajes creativos mediante diversos medios y plataformas. Ideal para storytellers natos con visión innovadora.',
     'Cosmetología Avanzada': 'Arte científico de la belleza y cuidado estético personalizado. Combinando creatividad visual con conocimientos dermatológicos.',
     'Bellas Artes': 'Expresión creativa pura mediante pintura, escultura y artes visuales. Para almas artísticas buscando comunicación no verbal profunda.',
@@ -290,7 +292,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     'Arquitectura': 'Arte científico de diseñar espacios habitables que fusionan forma y función. Para mentes creativas con visión estructural y social.',
     'Medios Creativos': 'Industria artística innovando en contenido digital, multimedia y entretenimiento. Para pioneros de nuevas formas de expresión.',
     'Derecho Creativo': 'Especialización única fusionando marco legal con industrias creativas y propiedad intelectual. Para mentes artísticas con visión jurídica.',
-
     'Contabilidad y Finanzas': 'Profesión metódica especializada en precisión numérica y gestión financiera. Ideal para mentes organizadas que disfrutan el orden y exactitud.',
     'Taquigrafía Judicial': 'Especialización técnica en transcripción legal precisa y documentación judicial. Requiere máxima atención al detalle y metodología.',
     'Seguros y Riesgos': 'Carrera estructurada en evaluación metódica de riesgos y protección financiera. Perfecta para analistas cuidadosos y preventivos.',
@@ -312,45 +313,102 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     'Convencional (C)': 0,
   };
 
+  // Lista para guardar las respuestas y poder retroceder
+  List<bool?> answersHistory = [];
+
   int currentQuestionIndex = 0;
   bool testCompleted = false;
   bool _showFeedback = false;
   bool? _lastAnswer;
   late String _currentCategory;
-  int _correctInARow = 0;
-  bool _showCelebration = false;
   bool _isLoading = true;
   bool _autoSaveEnabled = true;
+
+  // Colores modernos para 2026
+  static const Color primaryColor = Color(0xFF6C5CE7);
+  static const Color secondaryColor = Color(0xFFA8E6CF);
+  static const Color accentColor = Color(0xFFFF6B6B);
+  static const Color backgroundColor = Color(0xFFF7F9FC);
+  static const Color glassWhite = Color(0xFFF8F9FA);
+  static const Color textPrimary = Color(0xFF2D3436);
+  static const Color textSecondary = Color(0xFF636E72);
 
   @override
   void initState() {
     super.initState();
     _initializeControllers();
-    loadProgress();
+
+    // 👇 NUEVA LÓGICA: Si hay initialProgress, cargar ese progreso
+    if (widget.initialProgress != null) {
+      _loadFromProgress(widget.initialProgress!);
+    } else if (!widget.startNew) {
+      // Solo cargar progreso guardado si no es nuevo test
+      loadProgress();
+    } else {
+      // Es un test nuevo, no cargar nada
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _initializeControllers() {
-    _confettiController = ConfettiController(duration: const Duration(seconds: 5));
-    _confettiControllerLeft = ConfettiController(duration: const Duration(seconds: 5));
-    _confettiControllerRight = ConfettiController(duration: const Duration(seconds: 5));
-    _scaleController = AnimationController(
+    _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 600),
     );
-    _shakeController = AnimationController(
+
+    _slideController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
     );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
-    _shakeAnimation = Tween<double>(begin: 0.0, end: 10.0).animate(
-      CurvedAnimation(parent: _shakeController, curve: Curves.elasticOut),
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.1, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    _fadeController.forward();
+    _slideController.forward();
     _currentCategory = getCurrentCategory();
+  }
+
+  // 👇 NUEVO MÉTODO: Cargar progreso desde el parámetro initialProgress
+  void _loadFromProgress(Map<String, dynamic> progress) {
+    setState(() {
+      currentQuestionIndex = progress['currentQuestionIndex'] ?? 0;
+
+      // Cargar scores
+      if (progress['scores'] != null) {
+        scores = Map<String, int>.from(progress['scores']);
+      }
+
+      // Cargar historial de respuestas si existe
+      if (progress['answersHistory'] != null) {
+        answersHistory = (progress['answersHistory'] as List)
+            .map((e) => e == 'true' ? true : (e == 'false' ? false : null))
+            .toList();
+      }
+
+      _currentCategory = getCurrentCategory();
+      _isLoading = false;
+    });
+
+    // Animar
+    _slideController.forward();
   }
 
   // Método para guardar el progreso
@@ -362,6 +420,7 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       'testType': 'RIASEC',
       'currentQuestionIndex': currentQuestionIndex,
       'scores': scores,
+      'answersHistory': answersHistory.map((e) => e?.toString()).toList(),
       'lastUpdate': DateTime.now().toIso8601String(),
     };
 
@@ -384,6 +443,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       SnackBar(
         content: const Text('¡Progreso guardado correctamente!'),
         backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -394,6 +455,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       SnackBar(
         content: const Text('Error al guardar el progreso'),
         backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -401,6 +464,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
   // Método para cargar el progreso guardado
   Future<void> loadProgress() async {
+    // Si es un test nuevo, no cargar progreso
+    if (widget.startNew) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
     final dbHelper = DBHelper();
 
     try {
@@ -420,6 +491,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
             'Emprendedor (E)': 0,
             'Convencional (C)': 0,
           });
+
+          // Cargar historial de respuestas
+          if (progress['answersHistory'] != null) {
+            answersHistory = (progress['answersHistory'] as List)
+                .map((e) => e == 'true' ? true : (e == 'false' ? false : null))
+                .toList();
+          }
+
           _currentCategory = getCurrentCategory();
 
           // Si ya completó el test, mostrar resultados
@@ -463,8 +542,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         'Emprendedor (E)': 0,
         'Convencional (C)': 0,
       };
+      answersHistory = [];
       _currentCategory = getCurrentCategory();
-      _correctInARow = 0;
     });
     await clearProgress();
 
@@ -472,18 +551,55 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       SnackBar(
         content: const Text('Test reiniciado correctamente'),
         backgroundColor: Colors.blue,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
+  // NUEVO: Método para retroceder a la pregunta anterior
+  void goToPreviousQuestion() {
+    if (currentQuestionIndex > 0) {
+      // Obtener la respuesta anterior
+      bool? previousAnswer = answersHistory.length > currentQuestionIndex - 1
+          ? answersHistory[currentQuestionIndex - 1]
+          : null;
+
+      // Si había una respuesta, restar del score
+      if (previousAnswer != null) {
+        final previousCategory = questionCategories[currentQuestionIndex - 1] ?? 'Realista (R)';
+        if (previousAnswer) {
+          scores[previousCategory] = scores[previousCategory]! - 1;
+        }
+      }
+
+      setState(() {
+        currentQuestionIndex--;
+        _currentCategory = getCurrentCategory();
+        // Remover la respuesta actual del historial si existe
+        if (answersHistory.length > currentQuestionIndex) {
+          answersHistory = answersHistory.sublist(0, currentQuestionIndex);
+        }
+        _showFeedback = false;
+      });
+
+      // Animar el cambio
+      _slideController.reset();
+      _slideController.forward();
+
+      // Guardar progreso después de retroceder
+      if (_autoSaveEnabled) {
+        saveProgress(showMessage: false);
+      }
+    }
+  }
+
   @override
   void dispose() {
-    _confettiController.dispose();
-    _confettiControllerLeft.dispose();
-    _confettiControllerRight.dispose();
-    _scaleController.dispose();
-    _shakeController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -500,32 +616,29 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
       if (answer) {
         scores[category] = scores[category]! + 1;
-        _correctInARow++;
-        _scaleController.forward(from: 0.0);
+      }
 
-        // Mostrar confeti cada 3 respuestas afirmativas
-        if (_correctInARow % 3 == 0) {
-          _showCelebration = true;
-          _confettiController.play();
-          _confettiControllerLeft.play();
-          _confettiControllerRight.play();
-        }
+      // Guardar respuesta en el historial
+      if (answersHistory.length <= currentQuestionIndex) {
+        answersHistory.add(answer);
       } else {
-        _correctInARow = 0;
-        _shakeController.forward(from: 0.0);
+        answersHistory[currentQuestionIndex] = answer;
       }
     });
 
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 600));
 
     if (mounted) {
       setState(() {
         _showFeedback = false;
-        _showCelebration = false;
 
         if (currentQuestionIndex < 41) {
           currentQuestionIndex++;
           _currentCategory = getCurrentCategory();
+
+          // Animar la transición
+          _slideController.reset();
+          _slideController.forward();
 
           // Guardado automático después de cada respuesta
           if (_autoSaveEnabled) {
@@ -533,9 +646,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           }
         } else {
           testCompleted = true;
-          _confettiController.play();
-          _confettiControllerLeft.play();
-          _confettiControllerRight.play();
           // Limpiar progreso cuando se complete el test
           clearProgress();
         }
@@ -554,6 +664,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
           ? 'Guardado automático ACTIVADO'
           : 'Guardado automático DESACTIVADO'),
         backgroundColor: _autoSaveEnabled ? Colors.green : Colors.orange,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -583,344 +695,395 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
     };
   }
 
-void showResults(BuildContext context) async {
-  final results = getTestResults();
-  final dbHelper = DBHelper();
+  void showResults(BuildContext context) async {
+    final results = getTestResults();
+    final dbHelper = DBHelper();
 
-  final resultData = {
-    'userId': widget.userData['id'],
-    'testType': 'RIASEC',
-    'resultType': results['dominantCategory'],
-    'details': {
-      'scores': results['scores'],
-      'dominantCategory': results['dominantCategory'],
-      'careers': results['careers'],
-      'date': DateTime.now().toIso8601String(),
-    },
-  };
+    final resultData = {
+      'userId': widget.userData['id'],
+      'testType': 'RIASEC',
+      'resultType': results['dominantCategory'],
+      'details': {
+        'scores': results['scores'],
+        'dominantCategory': results['dominantCategory'],
+        'careers': results['careers'],
+        'date': DateTime.now().toIso8601String(),
+      },
+    };
 
-  try {
-    await dbHelper.saveTestResult(resultData);
-  } catch (e) {
-    print('Error al guardar resultados: $e');
-  }
+    try {
+      await dbHelper.saveTestResult(resultData);
+    } catch (e) {
+      print('Error al guardar resultados: $e');
+    }
 
-  showDialog(
-    context: context,
-    builder: (ctx) => Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      elevation: 10,
-      child: Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.9,
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header del diálogo
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.deepPurple, Colors.purple],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: const Text(
-                'Resultados del Test Vocacional',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
+        elevation: 10,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+          ),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                Colors.purple.shade50,
+              ],
             ),
-
-            // Contenido con scroll
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header del diálogo moderno
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [primaryColor, Colors.purple],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(30),
+                    topRight: Radius.circular(30),
+                  ),
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Perfil dominante
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.deepPurple.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.deepPurple.withOpacity(0.3),
-                        ),
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.emoji_events,
-                            color: Colors.deepPurple,
-                            size: 30,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Tu perfil dominante es:',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                Text(
-                                  results['dominantCategory'],
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.deepPurple,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      child: const Icon(
+                        Icons.emoji_events,
+                        color: Colors.white,
+                        size: 40,
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Gráfico de barras
+                    const SizedBox(height: 16),
                     const Text(
-                      'Puntajes por Categoría',
+                      'Resultados del Test',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 10),
-                    Container(
-                      height: 180,
-                      child: _buildBarChart(results['scores']),
-                    ),
-                    const SizedBox(height: 15),
-
-                    // Leyenda
-                    const Text(
-                      'Leyenda:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 6,
-                      children: [
-                        _buildLegendItem(Colors.blue, 'Realista (R)'),
-                        _buildLegendItem(Colors.green, 'Investigador (I)'),
-                        _buildLegendItem(Colors.purple, 'Artístico (A)'),
-                        _buildLegendItem(Colors.red, 'Social (S)'),
-                        _buildLegendItem(Colors.orange, 'Emprendedor (E)'),
-                        _buildLegendItem(Colors.teal, 'Convencional (C)'),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Carreras sugeridas - MOSTRAR TODAS
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.deepPurple.withOpacity(0.2),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.school,
-                            color: Colors.deepPurple,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Carreras Sugeridas (${(results['careers'] as List).length})',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.deepPurple,
-                                  ),
-                                ),
-                                Text(
-                                  'Todas las carreras para tu perfil ${results['dominantCategory']}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // MOSTRAR TODAS LAS CARRERAS
-                    ...(results['careers'] as List).map((career) =>
-                      _buildCareerResultCard(career)
-                    ).toList(),
                   ],
                 ),
               ),
-            ),
 
-            // Botones de acción
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
+              // Contenido con scroll
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Perfil dominante con glassmorphism
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: primaryColor.withOpacity(0.3),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryColor.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.stars,
+                                color: primaryColor,
+                                size: 30,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tu perfil dominante',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    results['dominantCategory'],
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Gráfico de barras moderno
+                      const Text(
+                        'Puntajes por Categoría',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildBarChart(results['scores']),
+                      const SizedBox(height: 16),
+
+                      // Leyenda moderna
+                      const Text(
+                        'Leyenda:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: [
+                          _buildLegendItem(Colors.blue, 'Realista'),
+                          _buildLegendItem(Colors.green, 'Investigador'),
+                          _buildLegendItem(Colors.purple, 'Artístico'),
+                          _buildLegendItem(Colors.red, 'Social'),
+                          _buildLegendItem(Colors.orange, 'Emprendedor'),
+                          _buildLegendItem(Colors.teal, 'Convencional'),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Carreras sugeridas - con diseño moderno
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              primaryColor.withOpacity(0.05),
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.school,
+                                color: primaryColor,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Carreras Sugeridas',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${(results['careers'] as List).length} opciones para ti',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // MOSTRAR TODAS LAS CARRERAS con diseño moderno
+                      ...(results['careers'] as List).map((career) =>
+                        _buildModernCareerCard(career)
+                      ).toList(),
+                    ],
+                  ),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 5,
-                    offset: Offset(0, -2),
-                  ),
-                ],
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        restartTest();
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+
+              // Botones de acción modernos
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          restartTest();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryColor,
+                          side: BorderSide(color: primaryColor),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                        side: BorderSide(color: Colors.deepPurple),
-                      ),
-                      child: const Text(
-                        'Repetir Test',
-                        style: TextStyle(color: Colors.deepPurple),
+                        child: const Text('Repetir Test'),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => HomeScreen(userData: widget.userData)),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => HomeScreen(userData: widget.userData)),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 5,
                         ),
-                      ),
-                      child: const Text(
-                        'Volver al Inicio',
-                        style: TextStyle(color: Colors.white),
+                        child: const Text('Volver al Inicio'),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-
-  // Widget para tarjetas de carrera en resultados
-  Widget _buildCareerResultCard(Map<String, dynamic> career) {
+  // Widget moderno para tarjetas de carrera
+  Widget _buildModernCareerCard(Map<String, dynamic> career) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(
-          color: Colors.grey[200]!,
-        ),
       ),
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.deepPurple.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.work_outline,
-            color: Colors.deepPurple,
-            size: 20,
-          ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
         ),
-        title: Text(
-          career['name'],
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
+              color: primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
             ),
-            child: Text(
-              career['description'],
-              textAlign: TextAlign.justify,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.5,
-                color: Colors.grey[700],
-              ),
+            child: Icon(
+              Icons.work_outline,
+              color: primaryColor,
+              size: 22,
             ),
           ),
-        ],
+          title: Text(
+            career['name'],
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: textPrimary,
+            ),
+          ),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Text(
+                career['description'],
+                textAlign: TextAlign.justify,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -929,74 +1092,97 @@ void showResults(BuildContext context) async {
     final maxValue = scores.values.reduce(max).toDouble();
     final entries = scores.entries.toList();
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 120,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: entries.map((entry) {
-                  final height = max((entry.value / maxValue) * 80, 8.0);
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
+      child: Column(
+        children: [
+          SizedBox(
+            height: 150,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: entries.map((entry) {
+                final height = max((entry.value / maxValue) * 100, 10.0);
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: height,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            _getCategoryColor(entry.key),
+                            _getCategoryColor(entry.key).withOpacity(0.7),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getCategoryColor(entry.key).withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 40,
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
                         entry.value.toString(),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: 25,
-                        height: height,
-                        decoration: BoxDecoration(
-                          color: _getCategoryColor(entry.key),
-                          borderRadius: BorderRadius.circular(4),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              _getCategoryColor(entry.key).withOpacity(0.8),
-                              _getCategoryColor(entry.key),
-                            ],
-                          ),
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getCategoryAbbreviation(entry.key),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: textSecondary,
                       ),
-                      const SizedBox(height: 4),
-                      SizedBox(
-                        width: 40,
-                        child: Text(
-                          _getCategoryAbbreviation(entry.key),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
+                    ),
+                  ],
+                );
+              }).toList(),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Puntaje máximo posible: 7',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(20),
             ),
-          ],
-        ),
+            child: const Text(
+              'Puntaje máximo: 7 puntos',
+              style: TextStyle(fontSize: 12, color: textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1015,20 +1201,30 @@ void showResults(BuildContext context) async {
   }
 
   Widget _buildLegendItem(Color color, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-        const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 12)),
-      ],
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 12, color: textSecondary),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1048,39 +1244,31 @@ void showResults(BuildContext context) async {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.grey[50],
-        appBar: AppBar(
-          title: const Text(
-            'Test Vocacional RIASEC',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          iconTheme: const IconThemeData(color: Colors.white),
-          centerTitle: true,
-          backgroundColor: Colors.deepPurple,
-          elevation: 4,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(20),
-            ),
-          ),
-        ),
-        body: const Center(
+        backgroundColor: backgroundColor,
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [primaryColor, Colors.purple],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 3,
+                ),
               ),
-              SizedBox(height: 20),
-              Text(
+              const SizedBox(height: 24),
+              const Text(
                 'Cargando tu progreso...',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.deepPurple,
+                  color: textSecondary,
                 ),
               ),
             ],
@@ -1090,24 +1278,42 @@ void showResults(BuildContext context) async {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: const Text(
-          'Test Vocacional RIASEC',
+          'Test Vocacional',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
-        backgroundColor: Colors.deepPurple,
-        elevation: 4,
+        backgroundColor: primaryColor,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [primaryColor, Colors.purple],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(20),
+            bottom: Radius.circular(30),
           ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => HomeScreen(userData: widget.userData)),
+            );
+          },
+          tooltip: 'Volver al inicio',
         ),
         actions: [
           if (!testCompleted)
@@ -1122,6 +1328,9 @@ void showResults(BuildContext context) async {
                     builder: (ctx) => AlertDialog(
                       title: const Text('Reiniciar Test'),
                       content: const Text('¿Estás seguro de que quieres reiniciar el test? Se perderá tu progreso actual.'),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.of(ctx).pop(),
@@ -1184,276 +1393,196 @@ void showResults(BuildContext context) async {
       body: Stack(
         children: [
           if (testCompleted)
-            _buildCompletionScreen()
+            _buildModernCompletionScreen()
           else
-            _buildQuestionScreen(),
+            _buildModernQuestionScreen(),
 
           if (_showFeedback)
             Positioned.fill(
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
                 color: _lastAnswer == true
-                  ? Colors.green.withOpacity(0.2)
-                  : Colors.red.withOpacity(0.2),
+                  ? Colors.green.withOpacity(0.1)
+                  : Colors.red.withOpacity(0.1),
               ),
             ),
-
-          if (_showCelebration)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Container(
-                  color: Colors.transparent,
-                  child: Center(
-                    child: Text(
-                      '¡${_correctInARow} en fila!',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                        shadows: [
-                          Shadow(
-                            blurRadius: 10.0,
-                            color: Colors.white,
-                            offset: Offset(0, 0),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // Confeti central
-          ConfettiWidget(
-            confettiController: _confettiController,
-            blastDirectionality: BlastDirectionality.explosive,
-            shouldLoop: false,
-            colors: const [
-              Colors.green,
-              Colors.blue,
-              Colors.purple,
-              Colors.orange,
-              Colors.red
-            ],
-          ),
-
-          // Confeti desde la esquina izquierda
-          Align(
-            alignment: Alignment.topLeft,
-            child: ConfettiWidget(
-              confettiController: _confettiControllerLeft,
-              blastDirection: pi / 4,
-              emissionFrequency: 0.05,
-              minimumSize: const Size(10, 10),
-              maximumSize: const Size(20, 20),
-              numberOfParticles: 20,
-              gravity: 0.1,
-              shouldLoop: false,
-              colors: const [
-                Colors.green,
-                Colors.blue,
-                Colors.purple,
-                Colors.orange,
-                Colors.red
-              ],
-            ),
-          ),
-
-          // Confeti desde la esquina derecha
-          Align(
-            alignment: Alignment.topRight,
-            child: ConfettiWidget(
-              confettiController: _confettiControllerRight,
-              blastDirection: 3 * pi / 4,
-              emissionFrequency: 0.05,
-              minimumSize: const Size(10, 10),
-              maximumSize: const Size(20, 20),
-              numberOfParticles: 20,
-              gravity: 0.1,
-              shouldLoop: false,
-              colors: const [
-                Colors.green,
-                Colors.blue,
-                Colors.purple,
-                Colors.orange,
-                Colors.red
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildCompletionScreen() {
+  Widget _buildModernCompletionScreen() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.celebration,
-            size: 80,
-            color: Colors.deepPurple,
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            '¡Test Completado!',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Descubre tu perfil vocacional',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 30),
-          ElevatedButton(
-            onPressed: () => showResults(context),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-              backgroundColor: Colors.deepPurple,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 5,
-            ),
-            child: const Text(
-              'Ver Mis Resultados',
-              style: TextStyle(fontSize: 18, color: Colors.white),
-            ),
-          ),
-          const SizedBox(height: 20),
-          TextButton(
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => HomeScreen(userData: widget.userData)),
-              );
-            },
-            child: const Text(
-              'Volver al inicio',
-              style: TextStyle(fontSize: 16, color: Colors.deepPurple),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuestionScreen() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Pregunta ${currentQuestionIndex + 1} de 42',
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [primaryColor, Colors.purple],
                 ),
-                Row(
-                  children: [
-                    Icon(
-                      _autoSaveEnabled ? Icons.cloud_done : Icons.cloud_off,
-                      color: _autoSaveEnabled ? Colors.green : Colors.grey,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _autoSaveEnabled ? 'Auto-guardado' : 'Manual',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _autoSaveEnabled ? Colors.green : Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryColor.withOpacity(0.3),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.emoji_events,
+                size: 80,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              '¡Test Completado!',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: (currentQuestionIndex + 1) / 42,
-                backgroundColor: Colors.grey[200],
-                minHeight: 10,
-                color: _getCategoryColor(_currentCategory),
+            Text(
+              'Descubre tu perfil vocacional',
+              style: TextStyle(
+                fontSize: 16,
+                color: textSecondary,
+              ),
+            ),
+            const SizedBox(height: 40),
+            ScaleTransition(
+              scale: _pulseAnimation,
+              child: ElevatedButton(
+                onPressed: () => showResults(context),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  elevation: 8,
+                ),
+                child: const Text(
+                  'Ver Mis Resultados',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => HomeScreen(userData: widget.userData)),
+                );
+              },
+              child: Text(
+                'Volver al inicio',
+                style: TextStyle(fontSize: 16, color: primaryColor),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
-        Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _getCategoryColor(_currentCategory).withOpacity(0.1),
-                  Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildModernQuestionScreen() {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // Indicador de progreso moderno
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
                 ],
               ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    riasecQuestions[currentQuestionIndex],
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 30),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ElevatedButton(
-                        onPressed: () => answerQuestion(true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 3,
-                        ),
-                        child: const Text(
-                          'Sí',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
+                      Text(
+                        'Pregunta ${currentQuestionIndex + 1} de 42',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: textSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(width: 20),
-                      ElevatedButton(
-                        onPressed: () => answerQuestion(false),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 3,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _autoSaveEnabled
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
-                          'No',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _autoSaveEnabled ? Icons.cloud_done : Icons.cloud_off,
+                              color: _autoSaveEnabled ? Colors.green : Colors.grey,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _autoSaveEnabled ? 'Guardando' : 'Manual',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _autoSaveEnabled ? Colors.green : Colors.grey,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Stack(
+                    children: [
+                      Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: (currentQuestionIndex + 1) / 42,
+                        child: Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                _getCategoryColor(_currentCategory),
+                                _getCategoryColor(_currentCategory).withOpacity(0.7),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
                     ],
@@ -1461,9 +1590,190 @@ void showResults(BuildContext context) async {
                 ],
               ),
             ),
-          ),
+
+            const SizedBox(height: 20),
+
+            // Tarjeta de pregunta con glassmorphism (SIN CATEGORÍA)
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white,
+                    _getCategoryColor(_currentCategory).withOpacity(0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: _getCategoryColor(_currentCategory).withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(30),
+                child: Column(
+                  children: [
+                    Text(
+                      riasecQuestions[currentQuestionIndex],
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                        color: textPrimary,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Botones de respuesta modernos
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ScaleTransition(
+                            scale: _pulseAnimation,
+                            child: ElevatedButton(
+                              onPressed: () => answerQuestion(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                elevation: 5,
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check, size: 24),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'SÍ',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => answerQuestion(false),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              elevation: 5,
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.close, size: 24),
+                                SizedBox(width: 8),
+                                Text(
+                                  'NO',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Botón de regresar a pregunta anterior (debajo de Sí/No)
+                    if (currentQuestionIndex > 0)
+                      Container(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: goToPreviousQuestion,
+                          icon: const Icon(Icons.arrow_back, size: 20),
+                          label: const Text(
+                            'Regresar a pregunta anterior',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: primaryColor,
+                            side: BorderSide(color: primaryColor.withOpacity(0.5)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Indicador de respuestas guardadas
+            if (answersHistory.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history, color: primaryColor, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Respuestas guardadas: ${answersHistory.length} de 42',
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${answersHistory.length}',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
